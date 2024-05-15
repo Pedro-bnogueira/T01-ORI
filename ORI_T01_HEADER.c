@@ -457,13 +457,13 @@
 			strcat(temp, ";");
 			strcat(temp, p.nome);
 			strcat(temp, ";");
-			sprintf(aux, "%d", p.dificuldade);
+			sprintf(aux, "%04d", p.dificuldade);
 			strcat(temp, aux);
 			strcat(temp, ";");
-			sprintf(aux, "%d", p.distancia);
+			sprintf(aux, "%04d", p.distancia);
 			strcat(temp, aux);
 			strcat(temp, ";");
-			sprintf(aux, "%d", p.recorde);
+			sprintf(aux, "%04d", p.recorde);
 			strcat(temp, aux);
 			strcat(temp, ";");
 
@@ -624,7 +624,52 @@
 		}
 
 		void cadastrar_pista_menu(char *nome, int dificuldade, int distancia, int recorde){
-			
+			// Variavel auxiliar para lidar com valores numericos
+			char aux[20];
+			aux[0] = '\0';
+
+			// Criacao da pista
+			Pista p;
+
+			// Criacao do ID incremental das pistas
+			sprintf(aux, "%08d", qtd_registros_pistas);
+			strcpy(p.id_pista, aux);
+
+			// Busca de pista com mesmo nome
+			nome_pista_index *pista = bsearch(nome, nome_pista_idx, qtd_registros_pistas, sizeof(nome_pista_index), qsort_nome_pista_idx);
+
+			// Verificacao de nome ja existente
+			if (!pista) {
+
+				// Criacao completa da pista
+				strcpy(p.nome, nome);
+				p.dificuldade = !dificuldade ? 1 : dificuldade;
+				p.distancia = distancia;
+				p.recorde = recorde;
+				
+				
+				// Atualizacao dos indices
+				pistas_idx[qtd_registros_pistas].rrn = qtd_registros_pistas;
+				strcpy(pistas_idx[qtd_registros_pistas].id_pista, p.id_pista);
+
+				strcpy(nome_pista_idx[qtd_registros_pistas].nome, p.nome);
+				strcpy(nome_pista_idx[qtd_registros_pistas].id_pista, p.id_pista);
+
+				// Insercao no arquivo
+				escrever_registro_pista(p, qtd_registros_pistas);
+
+				// Atualizacao da quantidade de registro de pistas
+				qtd_registros_pistas++;
+
+				// Ordenacao dos indices
+				qsort(pistas_idx, qtd_registros_pistas, sizeof(pistas_index), qsort_pistas_idx);
+				qsort(nome_pista_idx, qtd_registros_pistas, sizeof(nome_pista_index), qsort_nome_pista_idx);
+
+				printf(SUCESSO);
+			}
+			else { // caso ja exista uma pista com esse nome
+				printf(ERRO_PK_REPETIDA, nome);
+			}
 		}
 
 		void executar_corrida_menu(char *id_pista, char *ocorrencia, char *id_corredores, char *id_veiculos) {
@@ -644,13 +689,42 @@
 		}
 
 		void buscar_pista_id_menu(char *id_pista) {
-			/*IMPLEMENTE A FUNÇÃO AQUI*/
-			printf(ERRO_NAO_IMPLEMENTADO, "buscar_pista_id_menu()");
+			pistas_index index;
+			strcpy(index.id_pista, id_pista);
+			// Busca da pista
+			pistas_index *found = busca_binaria((void*)&index, pistas_idx, qtd_registros_pistas, sizeof(pistas_index), qsort_pistas_idx, true, 0);
+			
+			// Caso a pista nao seja encontrada
+			if(found == NULL || found->rrn < 0) {
+				printf(ERRO_REGISTRO_NAO_ENCONTRADO);
+			}
+			// Pista encontrada
+			else {
+				exibir_pista(found->rrn);
+			}
 		}
 
 		void buscar_pista_nome_menu(char *nome_pista) {
-			/*IMPLEMENTE A FUNÇÃO AQUI*/
-			printf(ERRO_NAO_IMPLEMENTADO, "buscar_pista_nome_menu()");
+			nome_pista_index n_index;
+			strcpy(n_index.nome, nome_pista);
+
+			// Busca do nome
+			nome_pista_index *n_found = busca_binaria((void*)&n_index, nome_pista_idx, qtd_registros_pistas, sizeof(nome_pista_index), qsort_nome_pista_idx, true, 0);
+			
+			pistas_index p_index;
+			strcpy(p_index.id_pista, n_found->id_pista);
+
+			// Busca da pista
+			pistas_index *p_found = busca_binaria((void*)&p_index, pistas_idx, qtd_registros_pistas, sizeof(pistas_index), qsort_pistas_idx, true, 0);
+			
+			// Caso a pista nao seja encontrada
+			if(p_found == NULL || p_found->rrn < 0) {
+				printf(ERRO_REGISTRO_NAO_ENCONTRADO);
+			}
+			// Pista encontrada
+			else {
+				exibir_pista(p_found->rrn);
+			}
 		}
 
 		/* Listagem */
@@ -730,8 +804,11 @@
 		}
 
 		void imprimir_pistas_idx_menu() {
-			/*IMPLEMENTE A FUNÇÃO AQUI*/
-			printf(ERRO_NAO_IMPLEMENTADO, "imprimir_pistas_idx_menu()");
+			if (pistas_idx == NULL || qtd_registros_pistas == 0)
+				printf(ERRO_ARQUIVO_VAZIO);
+			else
+				for (unsigned i = 0; i < qtd_registros_pistas; ++i)
+					printf("%s, %d\n", pistas_idx[i].id_pista, pistas_idx[i].rrn);
 		}
 
 		void imprimir_corridas_idx_menu() {
@@ -741,8 +818,13 @@
 
 		/* Imprimir índices secundários */
 		void imprimir_nome_pista_idx_menu() {
-			/*IMPLEMENTE A FUNÇÃO AQUI*/
-			printf(ERRO_NAO_IMPLEMENTADO, "imprimir_nome_pista_idx_menu()");
+			if (nome_pista_idx == NULL || qtd_registros_pistas == 0)
+				printf(ERRO_ARQUIVO_VAZIO);
+			else
+				for (unsigned i = 0; i < qtd_registros_pistas; ++i) {
+					char* nome_formatado = strupr(nome_pista_idx[i].nome);
+					printf("%s, %s\n", nome_formatado, nome_pista_idx[i].id_pista);
+				}
 		}
 
 		void imprimir_preco_veiculo_idx_menu() {
@@ -797,9 +879,102 @@
 
 
 		void* busca_binaria_com_reps(const void *key, const void *base0, size_t nmemb, size_t size, int (*compar)(const void *, const void *), bool exibir_caminho, int posicao_caso_repetido, int retorno_se_nao_encontrado) {
-			/*IMPLEMENTE A FUNÇÃO AQUI*/
-			printf(ERRO_NAO_IMPLEMENTADO, "busca_binaria_com_reps()");
-			return (void*) -1;
+			const char *base = (const char *) base0;
+			int lim, mid, comp;
+			const void* search_num;
+			// variavel para manter o ultimo elemento antes da key
+			const void* ant;
+
+			if (exibir_caminho) {
+				printf("Registros percorridos: ");
+			}
+
+			for(lim = nmemb; lim != 0; lim /= 2) {
+				mid = lim/2;
+				if(lim % 2 == 0) {
+					mid++;
+				}
+				search_num = base + mid * size;
+				comp = (*compar)(key, search_num);
+
+				// Exibicao do caminho percorrido pela busca
+				if (exibir_caminho) {
+					printf("%ld ", (search_num - base0)/size);
+				}
+
+				// Caso em que o valor foi encontrado
+				if (comp == 0) {
+
+					// Caso para retornar o elemento mais a esquerda se repetido
+					if(posicao_caso_repetido == -1) {
+						while (search_num != base && (*compar)(key, (const char *)search_num - size) == 0) {
+							search_num = (const char*)search_num - size;
+						}
+					}
+
+					// Caso para retornar o elemento mais a direita se repetido
+					if(posicao_caso_repetido == 1) {
+						while ((const char*)search_num < (base + nmemb * size) && (*compar)(key, (const char *)search_num + size) == 0) {
+							search_num = search_num + size;
+						}
+					}
+
+					// Caso para retornar o elemento central se repetido
+					if(posicao_caso_repetido == 0) {
+						const char* first = search_num; 
+						const char* last = search_num;
+
+						while (first != base && (*compar)(key, first - size) == 0) {
+							first = first - size;
+						}
+
+						while (last < (base + nmemb * size) && (*compar)(key, first + size) == 0) {
+							last = last + size;
+						}
+
+						// Calculo da quantidade de elementos repetidos
+						int qtd = (last - first)/size + 1;
+
+						if (qtd % 2 == 0) {
+							// Calculo dos indices dos elemento central mais a direita
+							search_num = (first + (qtd/2) * size) + size;
+						}
+						else {
+							// Calculo do indice do elemento central
+							search_num = first + (qtd/2) * size;
+
+						}
+					}
+					if (exibir_caminho) printf("\n");
+					return (void *) search_num;
+				}
+				// Caso em que o valor buscado é maior
+				if (comp > 0) {
+					ant = search_num;
+					base = (char *)search_num + size;
+					lim--;
+				}
+			}
+			if(exibir_caminho) printf("\n");
+
+			// Tratamento do retorno caso elemento nao seja encontrado
+
+			// Caso para retornar o antecessor
+			if(retorno_se_nao_encontrado == -1 && ant) {
+				if((const char*)ant != base0 && (*compar)(key, ant) < 0) {
+					return (void *) ant;
+				}
+			}
+			// Caso para retornar o sucessor
+			else if(retorno_se_nao_encontrado == 1 && ant) {
+				const void* next = (const char*)ant + size;
+				if(next && (*compar)(key, next) > 0) {
+					return (void *) next;
+				}
+			}
+
+			// Caso de retorno_nao_encontrado == 0
+			return(NULL);
 		}
 
 		void* busca_binaria(const void *key, const void *base0, size_t nmemb, size_t size, int (*compar)(const void *, const void *), bool exibir_caminho, int retorno_se_nao_encontrado) {

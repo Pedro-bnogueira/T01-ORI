@@ -529,8 +529,31 @@
 		}
 
 		void remover_corredor_menu(char *id_corredor) {
-			/*IMPLEMENTE A FUNÇÃO AQUI*/
-			printf(ERRO_NAO_IMPLEMENTADO, "remover_corredor_menu()");
+			
+			// Busca do corredor
+			corredores_index *corredor = bsearch(id_corredor, corredores_idx, qtd_registros_corredores, sizeof(corredores_index), qsort_corredores_idx);
+
+			if(corredor) {
+
+				// Recuperar o corredor no arquivo de dados
+				Corredor c = recuperar_registro_corredor(corredor->rrn);
+
+				// Colocar nas 2 primeiras posicoes do id (primeiro do registro) os caracteres marcadores de exclusao
+				c.id_corredor[0] = '*';
+				c.id_corredor[1] = '|';
+
+				// Escrever no arquivo com os marcadores atualizados
+				escrever_registro_corredor(c, corredor->rrn);
+
+				// Marcar a remocao no indice
+				int indice_corredor = corredor - corredores_idx;
+				corredores_idx[indice_corredor].rrn = -1;
+
+				printf(SUCESSO);
+			}
+			else {
+				printf(ERRO_REGISTRO_NAO_ENCONTRADO);
+			}
 		}
 
 		void adicionar_saldo_menu(char *id_corredor, double valor) {
@@ -753,8 +776,50 @@
 
 		/* Liberar espaço */
 		void liberar_espaco_menu() {
-			/*IMPLEMENTE A FUNÇÃO AQUI*/
-			printf(ERRO_NAO_IMPLEMENTADO, "liberar_espaco_menu()");
+			int cont=0;
+			corredores_index *indice = malloc(MAX_REGISTROS * sizeof(corredores_idx));
+
+			for(int i=0, j=0; i < qtd_registros_corredores; i++) {
+				// Recuperar os registros dos corredores
+				Corredor c = recuperar_registro_corredor(i);
+				
+				// Verificar se o registro foi excluido
+				if(c.id_corredor[0] != '*' && c.id_corredor[1] != '|'){
+					// Caso nao tenha sido é escrito no arquivo novamente 
+					// Sobrescreve registros excluidos e mantem a ordem
+					escrever_registro_corredor(c, j);
+					cont ++;
+					j++;
+				}
+			}
+
+			int del = qtd_registros_corredores - cont;
+
+			for(int i=0, k=0; i < qtd_registros_corredores; i++) {
+				// Atualizar o arquivo de indices
+				if(corredores_idx[i].rrn != -1) {
+					strcpy(indice[k].id_corredor, corredores_idx[i].id_corredor);
+					indice[k].rrn = corredores_idx[i].rrn - del;
+					k++;
+				}
+			}
+
+			// Truncar a string para remover repeticoes
+			ARQUIVO_CORREDORES[170 * cont] = '\0';
+
+			// Copia para corredores_idx o conteudo atualizado
+			memcpy(corredores_idx, indice, MAX_REGISTROS * sizeof(corredores_index));
+
+			// Ajustar a quantidade de registros de corredores
+			qtd_registros_corredores = cont;
+
+			// Ordenar indice
+			qsort(corredores_idx, qtd_registros_corredores, sizeof(corredores_index), qsort_corredores_idx);
+			
+			// Liberar a memoria do indice auxiliar
+			free(indice);
+
+			printf(SUCESSO);
 		}
 
 		/* Imprimir arquivos de dados */
@@ -942,7 +1007,6 @@
 						else {
 							// Calculo do indice do elemento central
 							search_num = first + (qtd/2) * size;
-
 						}
 					}
 					if (exibir_caminho) printf("\n");

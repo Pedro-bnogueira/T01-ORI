@@ -185,7 +185,7 @@
 				strcpy(nome_pista_idx[i].id_pista, p.id_pista);
 			}
 		
-			qsort(nome_pista_idx, qtd_registros_pistas, sizeof(nome_pista_idx), qsort_nome_pista_idx);
+			qsort(nome_pista_idx, qtd_registros_pistas, sizeof(nome_pista_index), qsort_nome_pista_idx);
 			printf(INDICE_CRIADO, "nome_pista_idx");
 		}
 
@@ -206,7 +206,7 @@
 				strcpy(preco_veiculo_idx[i].id_veiculo, v.id_veiculo);
 			}
 		
-			qsort(preco_veiculo_idx, qtd_registros_veiculos, sizeof(preco_veiculo_idx), qsort_preco_veiculo_idx);
+			qsort(preco_veiculo_idx, qtd_registros_veiculos, sizeof(preco_veiculo_index), qsort_preco_veiculo_idx);
 			printf(INDICE_CRIADO, "preco_veiculo_idx");
 		}
 
@@ -896,7 +896,7 @@
 			if (preco_veiculo_idx == NULL || qtd_registros_veiculos == 0)
 				printf(ERRO_ARQUIVO_VAZIO);
 			else
-				for (unsigned i = 0; i < qtd_registros_veiculos; ++i)
+				for (unsigned i = 0; i < qtd_registros_veiculos; i++)
 					printf("%05.2lf, %s\n", preco_veiculo_idx[i].preco, preco_veiculo_idx[i].id_veiculo);
 		}
 
@@ -955,7 +955,9 @@
 			}
 
 			for(lim = nmemb; lim != 0; lim /= 2) {
-				mid = lim/2;
+				mid = (lim - 1)/2;
+
+				// Utilizar o numero a direita caso for par
 				if(lim % 2 == 0) {
 					mid++;
 				}

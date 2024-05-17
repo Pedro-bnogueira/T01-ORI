@@ -161,9 +161,7 @@
 				}
 				strcpy(corridas_idx[i].ocorrencia, c.ocorrencia);
 				strcpy(corridas_idx[i].id_pista, c.id_pista);
-				
 			}
-		
 			qsort(corridas_idx, qtd_registros_corridas, sizeof(corridas_index), qsort_corridas_idx);
 			printf(INDICE_CRIADO, "corridas_idx");
 		}
@@ -370,18 +368,18 @@
 
 		Corrida recuperar_registro_corrida(int rrn) {
 			Corrida c;
-			char temp[TAM_REGISTRO_CORRIDA + 1], *campo;
+			char temp[TAM_REGISTRO_CORRIDA + 1];
 			strncpy(temp, ARQUIVO_CORRIDAS + (rrn * TAM_REGISTRO_CORRIDA), TAM_REGISTRO_CORRIDA);
 			temp[TAM_REGISTRO_CORRIDA] = '\0';
 
-			campo = strtok(temp, ";");
-			strcpy(c.id_pista, campo);
-			campo = strtok(NULL, ";");
-			strcpy(c.ocorrencia, campo);
-			campo = strtok(NULL, ";");
-			strcpy(c.id_corredores, campo);
-			campo = strtok(NULL, ";");
-			strcpy(c.id_veiculos, campo);
+			strncpy(c.id_pista, temp, 8);
+			c.id_pista[8] = '\0';
+			strncpy(c.ocorrencia, temp+8, 12);
+			c.ocorrencia[12] = '\0';
+			strncpy(c.id_corredores, temp + 20, 66);
+			c.id_corredores[66] = '\0';
+			strncpy(c.id_veiculos, temp + 88, 42);
+			c.id_veiculos[42] = '\0';
 
 			return c;
 		}
@@ -765,8 +763,26 @@
 		}
 
 		void listar_veiculos_compra_menu(char *id_corredor) {
-			/*IMPLEMENTE A FUNÇÃO AQUI*/
-			printf(ERRO_NAO_IMPLEMENTADO, "listar_veiculos_compra_menu()");
+
+			// Busca do corredor
+			corredores_index *corredor = bsearch(id_corredor, corredores_idx, qtd_registros_corredores, sizeof(corredores_index), qsort_corredores_idx);
+
+			// Recuperacao dos dados do corredor
+			Corredor c = recuperar_registro_corredor(corredor->rrn);
+
+			// Buscar veiculo com valor limite de compra
+			preco_veiculo_index *preco = busca_binaria((void *)&c.saldo, preco_veiculo_idx, qtd_registros_veiculos, sizeof(preco_veiculo_index), qsort_preco_veiculo_idx, false, -1);
+
+			for(int i=0; i < qtd_registros_veiculos; i++) {
+				// Buscar por valores menores que o limite
+				if(preco_veiculo_idx[i].preco <= preco->preco) {
+					// Buscar o veiculo correspondente
+					veiculos_index *aux = bsearch(preco_veiculo_idx[i].id_veiculo, veiculos_idx, qtd_registros_veiculos, sizeof(veiculos_index), qsort_veiculos_idx);
+					// Exibir o veiculo
+					exibir_veiculo(aux->rrn);
+				}
+			}
+
 		}
 
 		void listar_corridas_periodo_menu(char *data_inicio, char *data_fim) {
@@ -877,8 +893,11 @@
 		}
 
 		void imprimir_corridas_idx_menu() {
-			/*IMPLEMENTE A FUNÇÃO AQUI*/
-			printf(ERRO_NAO_IMPLEMENTADO, "imprimir_corridas_idx_menu()");
+			if (corridas_idx == NULL || qtd_registros_corridas == 0)
+				printf(ERRO_ARQUIVO_VAZIO);
+			else
+				for (unsigned i = 0; i < qtd_registros_corridas; ++i)
+					printf("%s, %s, %d\n", corridas_idx[i].ocorrencia, corridas_idx[i].id_pista, corridas_idx[i].rrn);
 		}
 
 		/* Imprimir índices secundários */
@@ -1014,9 +1033,11 @@
 					if (exibir_caminho) printf("\n");
 					return (void *) search_num;
 				}
+				// Guarda o numero passado como antecessor
+				ant = search_num;
+
 				// Caso em que o valor buscado é maior
 				if (comp > 0) {
-					ant = search_num;
 					base = (char *)search_num + size;
 					lim--;
 				}
@@ -1027,16 +1048,13 @@
 
 			// Caso para retornar o antecessor
 			if(retorno_se_nao_encontrado == -1 && ant) {
-				if((const char*)ant != base0 && (*compar)(key, ant) < 0) {
-					return (void *) ant;
-				}
+				const void* prev = (const char*)ant - size;
+				return (void *) prev;
 			}
 			// Caso para retornar o sucessor
 			else if(retorno_se_nao_encontrado == 1 && ant) {
 				const void* next = (const char*)ant + size;
-				if(next && (*compar)(key, next) > 0) {
-					return (void *) next;
-				}
+				return (void *) next;
 			}
 
 			// Caso de retorno_nao_encontrado == 0

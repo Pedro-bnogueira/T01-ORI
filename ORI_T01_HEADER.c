@@ -904,44 +904,41 @@
 			corredor_veiculos_secundario_index *v_modelo = bsearch(strupr(modelo), corredor_veiculos_idx.corredor_veiculos_secundario_idx, corredor_veiculos_idx.qtd_registros_secundario, sizeof(corredor_veiculos_secundario_index), qsort_corredor_veiculos_secundario_idx);
 
 			if(v_modelo){
-				// Encontrar os corredores que possuem esse modelo a partir do primeiro indice
-				corredor_veiculos_primario_index aux1 = corredor_veiculos_idx.corredor_veiculos_primario_idx[v_modelo->primeiro_indice];
-				
-				// Exibir camiinho que sera percorrido no indice primario
-				printf("Registros percorridos: %d ", v_modelo->primeiro_indice);
-				while(aux1.proximo_indice != -1) {
-					printf("%d ", aux1.proximo_indice);
-					aux1 = corredor_veiculos_idx.corredor_veiculos_primario_idx[aux1.proximo_indice];
-				}
-				printf("\n");
 
-				// Auxiliar 2 para exibir os corredores
-				corredor_veiculos_primario_index aux2 = corredor_veiculos_idx.corredor_veiculos_primario_idx[v_modelo->primeiro_indice];
+				// Auxiliar para pegar os corredores
+				corredor_veiculos_primario_index aux = corredor_veiculos_idx.corredor_veiculos_primario_idx[v_modelo->primeiro_indice];
 
-
+				// Vetor para armazenar corredores que possuem o modelo
 				corredores_index corredores[corredor_veiculos_idx.qtd_registros_primario];
 				int qtd_corredores=0;
 
-				// Adicionar primeiro registro de corredor com o veiculo
-				// Buscar corredor
-				corredores_index *corredor_inicial = bsearch(aux2.chave_primaria, corredores_idx, qtd_registros_corredores, sizeof(corredores_index), qsort_corredores_idx);
+				// Exibir camiinho que sera percorrido no indice primario
+				printf("Registros percorridos: %d ", v_modelo->primeiro_indice);
+				// Adicionar demais corredores ate o ultimo com prox indice = -1
+				while(aux.proximo_indice != -1) {
+					printf("%d ", aux.proximo_indice);
 
-				// Colocar em um vetor para exibir ordenadamente
-				corredores[qtd_corredores] = *corredor_inicial;
-				qtd_corredores++;
-
-				// Adicionar demoais corredores ate o ultimo com prox indice = -1
-				while(aux2.proximo_indice != -1) {
-					// Ir para o proximo
-					aux2 = corredor_veiculos_idx.corredor_veiculos_primario_idx[aux2.proximo_indice];
-					
 					// Buscar corredor
-					corredores_index *corredor = bsearch(aux2.chave_primaria, corredores_idx, qtd_registros_corredores, sizeof(corredores_index), qsort_corredores_idx);
+					corredores_index *corredor_inicial = bsearch(aux.chave_primaria, corredores_idx, qtd_registros_corredores, sizeof(corredores_index), qsort_corredores_idx);
 
 					// Colocar em um vetor para exibir ordenadamente
-					corredores[qtd_corredores] = *corredor;
+					corredores[qtd_corredores] = *corredor_inicial;
+					qtd_corredores++;
+
+					// Ir para o proximo
+					aux = corredor_veiculos_idx.corredor_veiculos_primario_idx[aux.proximo_indice];
+
+				}
+				// Inserir o unico ou o ultimo corredor
+				if(aux.proximo_indice == -1) {
+					// Buscar corredor
+					corredores_index *u_corredor = bsearch(aux.chave_primaria, corredores_idx, qtd_registros_corredores, sizeof(corredores_index), qsort_corredores_idx);
+
+					// Colocar em um vetor para exibir ordenadamente
+					corredores[qtd_corredores] = *u_corredor;
 					qtd_corredores++;
 				}
+				printf("\n");
 
 				// Ordenar o vetor dos corredores que possuem o modelo
 				qsort(corredores, qtd_corredores, sizeof(corredores_index), qsort_corredores_idx);

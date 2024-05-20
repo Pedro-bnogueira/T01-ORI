@@ -18,7 +18,6 @@
 
 		/* <<< COLOQUE AQUI OS DEMAIS PROTÓTIPOS DE FUNÇÕES, SE NECESSÁRIO >>> */
 
-
 		/* Funções auxiliares para o qsort.
 		* Com uma pequena alteração, é possível utilizá-las no bsearch, assim, evitando código duplicado.
 		* */
@@ -662,6 +661,7 @@
 							if(c.veiculos[i][j] != '\0' && c.veiculos[i][j] != '|'){
 								aux[j] = c.veiculos[i][j];
 							}
+							aux[j+1] = '\0';
 						}
 						if(strcmp(aux, v.modelo) == 0) {
 							printf(ERRO_VEICULO_REPETIDO, c.id_corredor, v.id_veiculo);
@@ -682,41 +682,7 @@
 							escrever_registro_corredor(c, corredor->rrn);
 
 							// Atualizar o indice
-							corredor_veiculos_secundario_index *modelo = bsearch(strupr(v.modelo), corredor_veiculos_idx.corredor_veiculos_secundario_idx, corredor_veiculos_idx.qtd_registros_secundario, sizeof(corredor_veiculos_secundario_index), qsort_corredor_veiculos_secundario_idx);
-							if(!modelo) {
-								// Caso nao exista adicionar no secundario
-								strcpy(corredor_veiculos_idx.corredor_veiculos_secundario_idx[corredor_veiculos_idx.qtd_registros_secundario].chave_secundaria, strupr(v.modelo));
-								corredor_veiculos_idx.corredor_veiculos_secundario_idx[corredor_veiculos_idx.qtd_registros_secundario].primeiro_indice = corredor_veiculos_idx.qtd_registros_primario;
-
-								// Adicionar no primario
-								strcpy(corredor_veiculos_idx.corredor_veiculos_primario_idx[corredor_veiculos_idx.qtd_registros_primario].chave_primaria, id_corredor);
-								corredor_veiculos_idx.corredor_veiculos_primario_idx[corredor_veiculos_idx.qtd_registros_primario].proximo_indice = -1;
-								
-								// Atualizar as quantidades
-								corredor_veiculos_idx.qtd_registros_primario++;
-								corredor_veiculos_idx.qtd_registros_secundario++;
-
-								// Ordenar o indice secundario
-								qsort(corredor_veiculos_idx.corredor_veiculos_secundario_idx, corredor_veiculos_idx.qtd_registros_secundario, sizeof(corredor_veiculos_secundario_index), qsort_corredor_veiculos_secundario_idx);
-
-							}
-							else {
-								// Caso ja exista no indice secundario apenas adicionar no primario
-								corredor_veiculos_primario_index aux = corredor_veiculos_idx.corredor_veiculos_primario_idx[modelo->primeiro_indice];
-								// Encontrar o ultimo registro desse modelo no indice primario
-								while(corredor_veiculos_idx.corredor_veiculos_primario_idx[aux.proximo_indice].proximo_indice != -1) {
-									aux = corredor_veiculos_idx.corredor_veiculos_primario_idx[aux.proximo_indice];
-								}
-								// Trocar o proximo indice do antigo ultimo para o local de insercao desse novo (ultima posicao)
-								corredor_veiculos_idx.corredor_veiculos_primario_idx[aux.proximo_indice].proximo_indice = corredor_veiculos_idx.qtd_registros_primario;
-
-								// Inserir o novo na ultima posicao
-								strcpy(corredor_veiculos_idx.corredor_veiculos_primario_idx[corredor_veiculos_idx.qtd_registros_primario].chave_primaria, id_corredor);
-								corredor_veiculos_idx.corredor_veiculos_primario_idx[corredor_veiculos_idx.qtd_registros_primario].proximo_indice = -1;
-
-								// Atualizar quantidade
-								corredor_veiculos_idx.qtd_registros_primario++;
-							}
+							inverted_list_insert(v.modelo, id_corredor, &corredor_veiculos_idx);
 
 							printf(SUCESSO);
 							return;
@@ -901,52 +867,28 @@
 		void listar_corredores_modelo_menu(char *modelo){
 			
 			// Buscar o modelo no indice secundaria da lista invertida
-			corredor_veiculos_secundario_index *v_modelo = bsearch(strupr(modelo), corredor_veiculos_idx.corredor_veiculos_secundario_idx, corredor_veiculos_idx.qtd_registros_secundario, sizeof(corredor_veiculos_secundario_index), qsort_corredor_veiculos_secundario_idx);
+			int result;
+			bool exist = inverted_list_secondary_search(&result, false, strupr(modelo), &corredor_veiculos_idx);
 
-			if(v_modelo){
-
-				// Auxiliar para pegar os corredores
-				corredor_veiculos_primario_index aux = corredor_veiculos_idx.corredor_veiculos_primario_idx[v_modelo->primeiro_indice];
-
-				// Vetor para armazenar corredores que possuem o modelo
-				corredores_index corredores[corredor_veiculos_idx.qtd_registros_primario];
-				int qtd_corredores=0;
-
-				// Exibir camiinho que sera percorrido no indice primario
-				printf("Registros percorridos: %d ", v_modelo->primeiro_indice);
-				// Adicionar demais corredores ate o ultimo com prox indice = -1
-				while(aux.proximo_indice != -1) {
-					printf("%d ", aux.proximo_indice);
-
-					// Buscar corredor
-					corredores_index *corredor_inicial = bsearch(aux.chave_primaria, corredores_idx, qtd_registros_corredores, sizeof(corredores_index), qsort_corredores_idx);
-
-					// Colocar em um vetor para exibir ordenadamente
-					corredores[qtd_corredores] = *corredor_inicial;
-					qtd_corredores++;
-
-					// Ir para o proximo
-					aux = corredor_veiculos_idx.corredor_veiculos_primario_idx[aux.proximo_indice];
-
-				}
-				// Inserir o unico ou o ultimo corredor
-				if(aux.proximo_indice == -1) {
-					// Buscar corredor
-					corredores_index *u_corredor = bsearch(aux.chave_primaria, corredores_idx, qtd_registros_corredores, sizeof(corredores_index), qsort_corredores_idx);
-
-					// Colocar em um vetor para exibir ordenadamente
-					corredores[qtd_corredores] = *u_corredor;
-					qtd_corredores++;
-				}
-				printf("\n");
-
-				// Ordenar o vetor dos corredores que possuem o modelo
-				qsort(corredores, qtd_corredores, sizeof(corredores_index), qsort_corredores_idx);
-
-				// Exibir corredores ordenados
+			if(exist){
+				char corredores[MAX_REGISTROS][TAM_ID_CORREDOR];
+				int qtd_corredores = inverted_list_primary_search(corredores, true, result, NULL, &corredor_veiculos_idx);
+				// Buscar corredores retornados
 				for(int i=0; i < qtd_corredores; i++) {
-					exibir_corredor(corredores[i].rrn);
+					char aux[TAM_ID_CORREDOR];
+					
+					for(int j=0; j < TAM_ID_CORREDOR; j++){
+						aux[j] = corredores[i][j];
+						aux[j+1] = '\0';
+					}
+
+					corredores_index *corredor = bsearch(aux, corredores_idx, qtd_registros_corredores, sizeof(corredores_index), qsort_corredores_idx);
+
+					// Exibir corredores
+					exibir_corredor(corredor->rrn);
+
 				}
+
 			}
 			else {
 				printf(AVISO_NENHUM_REGISTRO_ENCONTRADO);
@@ -1146,20 +1088,114 @@
 		}
 
 		void inverted_list_insert(char *chave_secundaria, char *chave_primaria, inverted_list *t) {
-			/*IMPLEMENTE A FUNÇÃO AQUI*/
-			printf(ERRO_NAO_IMPLEMENTADO, "inverted_list_insert()");
+			// Conferir se o modelo ja existe no indice secundario
+			corredor_veiculos_secundario_index *modelo = bsearch(strupr(chave_secundaria), t->corredor_veiculos_secundario_idx, corredor_veiculos_idx.qtd_registros_secundario, sizeof(corredor_veiculos_secundario_index), qsort_corredor_veiculos_secundario_idx);
+			if(!modelo) {
+				// Caso nao exista adicionar no secundario
+				strcpy(t->corredor_veiculos_secundario_idx[t->qtd_registros_secundario].chave_secundaria, strupr(chave_secundaria));
+				t->corredor_veiculos_secundario_idx[t->qtd_registros_secundario].primeiro_indice = t->qtd_registros_primario;
+
+				// Adicionar no primario
+				strcpy(t->corredor_veiculos_primario_idx[t->qtd_registros_primario].chave_primaria, chave_primaria);
+				t->corredor_veiculos_primario_idx[t->qtd_registros_primario].proximo_indice = -1;
+				
+				// Atualizar as quantidades
+				t->qtd_registros_primario++;
+				t->qtd_registros_secundario++;
+
+				// Ordenar o indice secundario
+				qsort(t->corredor_veiculos_secundario_idx, t->qtd_registros_secundario, sizeof(corredor_veiculos_secundario_index), qsort_corredor_veiculos_secundario_idx);
+
+			}
+			else {
+				// Caso ja exista no indice secundario apenas adicionar no primario
+				corredor_veiculos_primario_index aux = t->corredor_veiculos_primario_idx[modelo->primeiro_indice];
+				// Encontrar o ultimo registro desse modelo no indice primario
+				while(t->corredor_veiculos_primario_idx[aux.proximo_indice].proximo_indice != -1) {
+					aux = t->corredor_veiculos_primario_idx[aux.proximo_indice];
+				}
+				// Trocar o proximo indice do antigo ultimo para o local de insercao desse novo (ultima posicao)
+				t->corredor_veiculos_primario_idx[aux.proximo_indice].proximo_indice = t->qtd_registros_primario;
+
+				// Inserir o novo na ultima posicao
+				strcpy(t->corredor_veiculos_primario_idx[t->qtd_registros_primario].chave_primaria, chave_primaria);
+				t->corredor_veiculos_primario_idx[t->qtd_registros_primario].proximo_indice = -1;
+
+				// Atualizar quantidade
+				t->qtd_registros_primario++;
+			}
 		}
 
 		bool inverted_list_secondary_search(int *result, bool exibir_caminho, char *chave_secundaria, inverted_list *t) {
-			/*IMPLEMENTE A FUNÇÃO AQUI*/
-			printf(ERRO_NAO_IMPLEMENTADO, "inverted_list_secondary_search()");
-			return false;
+			corredor_veiculos_secundario_index *aux = busca_binaria(chave_secundaria, t->corredor_veiculos_secundario_idx, t->qtd_registros_secundario, sizeof(corredor_veiculos_secundario_index), qsort_corredor_veiculos_secundario_idx, exibir_caminho, 0);
+			
+			if(aux) {
+				if(result) {
+					*result = aux->primeiro_indice;
+				}
+				return true;
+			}
+			else {
+				return false;
+			}
+
 		}
 
 		int inverted_list_primary_search(char result[][TAM_ID_CORREDOR], bool exibir_caminho, int indice, int *indice_final, inverted_list *t) {
-			/*IMPLEMENTE A FUNÇÃO AQUI*/
-			printf(ERRO_NAO_IMPLEMENTADO, "inverted_list_primary_search()");
-			return -1;
+			int qtd=0;
+			
+			// Auxiliar para pegar os corredores
+			corredor_veiculos_primario_index aux = t->corredor_veiculos_primario_idx[indice];
+
+			if(exibir_caminho) {
+				printf("Registros percorridos: %d ", indice);
+			}
+
+			// Adicionar demais corredores ate o ultimo com prox indice = -1
+			while(aux.proximo_indice != -1) {
+				if(exibir_caminho) {
+					printf("%d ", aux.proximo_indice);
+				}
+				
+				if(result) {
+					for(int j=0; j < TAM_ID_CORREDOR; j++) {
+						result[qtd][j] = aux.chave_primaria[j];
+						result[qtd][j+1] = '\0';
+					}
+				}
+
+				// Guardara o ultimo prox indice antes de ser -1, o que equivale ao indice do ultimo registro
+				if (indice_final) {
+					*indice_final = aux.proximo_indice;
+				}
+
+				// Ir para o proximo
+				aux = t->corredor_veiculos_primario_idx[aux.proximo_indice];
+				qtd++;
+			}
+
+			// Inserir o unico ou o ultimo corredor
+			if(aux.proximo_indice == -1) {
+
+				if(result) {
+					for(int j=0; j < TAM_ID_CORREDOR; j++) {
+						result[qtd][j] = aux.chave_primaria[j];
+						result[qtd][j+1] = '\0';
+					}
+				}
+
+				qtd++;
+
+			}
+
+			if(exibir_caminho) {
+				printf("\n");
+			}
+
+			// Ordenar o vetor dos corredores que possuem o modelo
+			qsort(result, qtd, TAM_ID_CORREDOR, qsort_corredores_idx);
+			
+			return qtd;
 		}
 
 
@@ -1170,7 +1206,7 @@
 			// variavel para manter o ultimo elemento antes da key
 			const void* ant;
 
-			if (exibir_caminho) {
+			if(exibir_caminho) {
 				printf("Registros percorridos: ");
 			}
 

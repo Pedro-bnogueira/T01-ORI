@@ -801,8 +801,139 @@
 		}
 
 		void executar_corrida_menu(char *id_pista, char *ocorrencia, char *id_corredores, char *id_veiculos) {
-			/*IMPLEMENTE A FUNÇÃO AQUI*/
-			printf(ERRO_NAO_IMPLEMENTADO, "executar_corrida_menu()");
+			// * Recuperar os dados
+
+			// Buscar pista
+			pistas_index *pista = bsearch(id_pista, pistas_idx, qtd_registros_pistas, sizeof(pistas_index), qsort_pistas_idx);
+			if(!pista) {
+				printf(ERRO_REGISTRO_NAO_ENCONTRADO);
+				return;
+			}
+
+			// Buscar corredores
+			int qtd_corredores=0;
+			corredores_index *corredores[MAX_REGISTROS]; 
+			for(int i=0; i < strlen(id_corredores); i += (TAM_ID_CORREDOR-1)) {
+				char aux_c[TAM_ID_CORREDOR];
+				
+				// Separar o id por cada corredor do parametro
+				strncpy(aux_c, id_corredores + i, (TAM_ID_CORREDOR - 1) );
+				aux_c[TAM_ID_CORREDOR] = '\0';
+				
+				// Verificar se o corredor existe e guarda-lo
+				corredores[qtd_corredores] = bsearch(aux_c, corredores_idx, qtd_registros_corredores, sizeof(corredores_index), qsort_corredores_idx);
+				if(!corredores[qtd_corredores]) {
+					printf(ERRO_REGISTRO_NAO_ENCONTRADO);
+					return;
+				}
+				qtd_corredores++;
+			}
+			
+
+
+			// Buscar veiculos
+			veiculos_index *veiculos[MAX_REGISTROS]; 
+			for(int i=0, j=0; i < strlen(id_veiculos); i += TAM_ID_VEICULO-1) {
+				char aux_v[TAM_ID_VEICULO + 1];
+
+				// Separar o id por cada veiculo do parametro
+				strncpy(aux_v, id_veiculos + i, TAM_ID_VEICULO-1 );
+				aux_v[TAM_ID_VEICULO-1] = '\0';
+
+				// Verificar se o veiculo existe e guarda-lo
+				veiculos[j] = bsearch(aux_v,veiculos_idx, qtd_registros_veiculos, sizeof(veiculos_index), qsort_veiculos_idx);
+
+				if(!veiculos[j]) {
+					printf(ERRO_REGISTRO_NAO_ENCONTRADO);
+					return;
+				}
+
+				j++;
+			}
+			
+
+
+			// Verificacao de corredor com veiculo que nao possui
+			for(int i=0; i < qtd_corredores; i++) { // qtd corredor = qtd veiculo
+				Veiculo v = recuperar_registro_veiculo(veiculos[i]->rrn);
+
+				int primeiro_ind;
+				// Procura o modelo do veiculo no indice secundario da lista invertida
+				if(inverted_list_secondary_search(&primeiro_ind, false, strupr(v.modelo), &corredor_veiculos_idx)) {
+					char aux[MAX_REGISTROS][TAM_ID_CORREDOR];
+					// Busca os corredores desse modelo no indice primario da lista invertida
+					int qtd = inverted_list_primary_search(aux, false, primeiro_ind, NULL, &corredor_veiculos_idx);
+					
+					// Se o corredor do parametro (guardado em corredores) nao estiver na matriz da lista invertida ele nao possui o veiculo
+					corredores_index *c_veiculo = bsearch(corredores[i]->id_corredor, aux, qtd, TAM_ID_CORREDOR, qsort_corredores_idx);
+					if(!c_veiculo) {
+						printf(ERRO_CORREDOR_VEICULO, corredores[i]->id_corredor, veiculos[i]->id_veiculo);
+						return;
+					}
+
+				}
+				else {
+					printf(ERRO_REGISTRO_NAO_ENCONTRADO);
+					return;
+				}
+			}
+
+
+			// Verificacao de repeticao de corrida
+			corridas_index *pista_corrida = bsearch(id_pista, corridas_idx, qtd_registros_corridas, sizeof(corridas_index), qsort_corridas_idx);
+			corridas_index *ocorrencia_corrida = bsearch(ocorrencia, corridas_idx, qtd_registros_corridas, sizeof(corridas_index), qsort_data_idx);
+
+			// Combinacao das chaves para verificacao da unicidade da corrida
+			if(!pista_corrida && !ocorrencia_corrida) {
+				// * Executar nova corrida
+
+				// Recuperar pista para saber a dificuldade
+				Pista p = recuperar_registro_pista(pista->rrn);
+
+				// Calculo do valor total arrecadado
+				double v_total = 6 * (TX_FIXA * p.dificuldade);
+
+				// Atribuicao da premiacao
+				Corredor primeiro = recuperar_registro_corredor(corredores[0]->rrn);
+				Corredor segundo = recuperar_registro_corredor(corredores[1]->rrn);
+				Corredor terceiro = recuperar_registro_corredor(corredores[2]->rrn);
+
+				primeiro.saldo = primeiro.saldo + (40 * v_total / 100);
+				segundo.saldo = segundo.saldo + (30 * v_total / 100);
+				terceiro.saldo = terceiro.saldo + (20 * v_total / 100);
+
+				// Escrever a atualizacao dos saldos nos arquivos
+				escrever_registro_corredor(primeiro, corredores[0]->rrn);
+				escrever_registro_corredor(segundo, corredores[1]->rrn);
+				escrever_registro_corredor(terceiro, corredores[2]->rrn);
+
+				// Criar a corrida
+				Corrida c;
+				strcpy(c.id_pista, id_pista);
+				strcpy(c.ocorrencia, ocorrencia);
+				strcpy(c.id_corredores, id_corredores);
+				strcpy(c.id_veiculos, id_veiculos);
+
+				// Atualizar indice
+				corridas_idx[qtd_registros_corridas].rrn = qtd_registros_corridas;
+				strcpy(corridas_idx[qtd_registros_corridas].id_pista, id_pista);
+				strcpy(corridas_idx[qtd_registros_corridas].ocorrencia, ocorrencia);
+
+				// Escrever no arquivo de corridas
+				escrever_registro_corrida(c, qtd_registros_corridas);
+
+				// Atualizar quantidade de registro de corridas
+				qtd_registros_corridas++;
+
+				// Ordenar o indice de corridas
+				qsort(corridas_idx, qtd_registros_corridas, sizeof(corridas_index), qsort_corridas_idx);
+				
+				printf(SUCESSO);
+			}
+			else {
+				printf(ERRO_PK_REPETIDA, strcat(ocorrencia, id_pista));
+			}
+
 		}
 
 		/* Busca */
@@ -1049,7 +1180,7 @@
 				printf(ERRO_ARQUIVO_VAZIO);
 			else
 				for (unsigned i = 0; i < qtd_registros_veiculos; i++)
-					printf("%05.2lf, %s\n", preco_veiculo_idx[i].preco, preco_veiculo_idx[i].id_veiculo);
+					printf("%.2lf, %s\n", preco_veiculo_idx[i].preco, preco_veiculo_idx[i].id_veiculo);
 		}
 
 		void imprimir_corredor_veiculos_secundario_idx_menu() {

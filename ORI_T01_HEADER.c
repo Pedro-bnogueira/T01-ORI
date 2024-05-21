@@ -335,7 +335,7 @@
 
 			Corrida c = recuperar_registro_corrida(rrn);
 
-			printf("%s, %s, %s, %s", c.id_pista, c.ocorrencia, c.id_corredores, c.id_veiculos);
+			printf("%s, %s, %s, %s\n", c.id_pista, c.ocorrencia, c.id_corredores, c.id_veiculos);
 			return true;
 		}
 
@@ -430,7 +430,7 @@
 			c.ocorrencia[12] = '\0';
 			strncpy(c.id_corredores, temp + 20, 66);
 			c.id_corredores[66] = '\0';
-			strncpy(c.id_veiculos, temp + 88, 42);
+			strncpy(c.id_veiculos, temp + 86, 42);
 			c.id_veiculos[42] = '\0';
 
 			return c;
@@ -852,7 +852,8 @@
 			}
 			
 
-
+			// Auxiliar de verificacao de erro para retornar a funcao apos a exibicao de todas as mensagens devidamente
+			bool erro = false;
 			// Verificacao de corredor com veiculo que nao possui
 			for(int i=0; i < qtd_corredores; i++) { // qtd corredor = qtd veiculo
 				Veiculo v = recuperar_registro_veiculo(veiculos[i]->rrn);
@@ -868,14 +869,18 @@
 					corredores_index *c_veiculo = bsearch(corredores[i]->id_corredor, aux, qtd, TAM_ID_CORREDOR, qsort_corredores_idx);
 					if(!c_veiculo) {
 						printf(ERRO_CORREDOR_VEICULO, corredores[i]->id_corredor, veiculos[i]->id_veiculo);
-						return;
+						erro = true;
 					}
 
 				}
 				else {
-					printf(ERRO_REGISTRO_NAO_ENCONTRADO);
-					return;
+					printf(ERRO_CORREDOR_VEICULO, corredores[i]->id_corredor, veiculos[i]->id_veiculo);
+					erro = true;
 				}
+			}
+
+			if(erro) {
+				return;
 			}
 
 
@@ -970,14 +975,19 @@
 			// Busca do nome
 			nome_pista_index *n_found = busca_binaria((void*)&n_index, nome_pista_idx, qtd_registros_pistas, sizeof(nome_pista_index), qsort_nome_pista_idx, true, 0);
 			
+			if(!n_found) {
+				printf(ERRO_REGISTRO_NAO_ENCONTRADO);
+				return;
+			}
+
 			pistas_index p_index;
 			strcpy(p_index.id_pista, n_found->id_pista);
 
 			// Busca da pista
 			pistas_index *p_found = busca_binaria((void*)&p_index, pistas_idx, qtd_registros_pistas, sizeof(pistas_index), qsort_pistas_idx, true, 0);
-			
+
 			// Caso a pista nao seja encontrada
-			if(p_found == NULL || p_found->rrn < 0) {
+			if(!p_found) {
 				printf(ERRO_REGISTRO_NAO_ENCONTRADO);
 			}
 			// Pista encontrada
@@ -1050,8 +1060,34 @@
 		}
 
 		void listar_corridas_periodo_menu(char *data_inicio, char *data_fim) {
-			/*IMPLEMENTE A FUNÇÃO AQUI*/
-			printf(ERRO_NAO_IMPLEMENTADO, "listar_corridas_periodo_menu()");
+			// Auxiliar de corridas ordenado por data para buscar as corridas do periodo
+			corridas_index *aux = (corridas_index*)malloc(qtd_registros_corridas * sizeof(corridas_index));
+			for(int i=0; i < qtd_registros_corridas; i++) {
+				strcpy(aux[i].id_pista, corridas_idx[i].id_pista);
+				strcpy(aux[i].ocorrencia, corridas_idx[i].ocorrencia);
+				aux[i].rrn = corridas_idx[i].rrn;
+			}
+
+			// Ordenar por data
+			qsort(aux, qtd_registros_corridas, sizeof(corridas_index), qsort_data_idx);
+
+			// Buscar data_inicio ou posterior mais proxima
+			corridas_index *inicio = busca_binaria(data_inicio, corridas_idx, qtd_registros_corridas, sizeof(corridas_index), qsort_data_idx, true, 1);
+
+			if(inicio) {
+				for(int i=0; i < qtd_registros_corridas; i++) {
+					// Exibir as corridas maiores ou iguais a data inicial ou posterior mais proxima e manor ou igual a final
+					if(strcmp(inicio->ocorrencia, aux[i].ocorrencia) <= 0 && strcmp(aux[i].ocorrencia, data_fim) <= 0) {
+						exibir_corrida(aux[i].rrn);
+					}
+				}
+			}
+			else {
+				printf(AVISO_NENHUM_REGISTRO_ENCONTRADO);
+			}
+
+			// Liberar a memoria do auxiliar utilizado
+			free(aux);
 		}
 
 		/* Liberar espaço */
@@ -1334,8 +1370,9 @@
 			const char *base = (const char *) base0;
 			int lim, mid, comp;
 			const void* search_num;
-			// variavel para manter o ultimo elemento antes da key
-			const void* ant;
+
+			// variavel para manter e preservar o elemento atual da busca
+			const void* atual;
 
 			if(exibir_caminho) {
 				printf("Registros percorridos: ");
@@ -1401,8 +1438,8 @@
 					if (exibir_caminho) printf("\n");
 					return (void *) search_num;
 				}
-				// Guarda o numero passado como antecessor
-				ant = search_num;
+				// Guarda o numero passado 
+				atual = search_num;
 
 				// Caso em que o valor buscado é maior
 				if (comp > 0) {
@@ -1415,16 +1452,15 @@
 			// Tratamento do retorno caso elemento nao seja encontrado
 
 			// Caso para retornar o antecessor
-			if(retorno_se_nao_encontrado == -1 && ant) {
-				const void* prev = (const char*)ant - size;
+			if(retorno_se_nao_encontrado == -1 && atual) {
+				const void* prev = (const char*)atual - size;
 				return (void *) prev;
 			}
 			// Caso para retornar o sucessor
-			else if(retorno_se_nao_encontrado == 1 && ant) {
-				const void* next = (const char*)ant + size;
+			else if(retorno_se_nao_encontrado == 1 && atual) {
+				const void* next = (const char*)atual;
 				return (void *) next;
 			}
-
 			// Caso de retorno_nao_encontrado == 0
 			return(NULL);
 		}

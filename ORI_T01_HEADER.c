@@ -5,6 +5,9 @@
 		*
 		* Trabalho 01 - Indexação
 		*
+		* Aluno: Pedro Enrico Barchi Nogueira
+		* RA: 813099
+		*
 		* ========================================================================== *
 		*   <<< IMPLEMENTE AQUI!!! COPIE E COLE O CONTEÚDO DESTE ARQUIVO NO AVA >>>
 		* ========================================================================== */
